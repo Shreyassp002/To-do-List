@@ -94,4 +94,7 @@ dependencies {
 
     // extended Icons
     implementation (libs.androidx.material.icons.extended)
+
+    //Compose Navigation
+    implementation (libs.androidx.navigation.compose)
 }
