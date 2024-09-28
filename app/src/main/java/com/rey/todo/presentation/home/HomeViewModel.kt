@@ -41,7 +41,7 @@ class HomeViewModel @Inject constructor(
             .launchIn(viewModelScope)
     }
 
-    fun deleteNote(todoId:Long) = viewModelScope.launch {
+    fun deleteTodo(todoId:Long) = viewModelScope.launch {
         deleteTodoUseCase(todoId)
     }
 

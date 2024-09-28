@@ -1,7 +1,9 @@
 package com.rey.todo.presentation.home
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -9,6 +11,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
@@ -22,8 +27,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -45,12 +56,23 @@ fun HomeScreen(
         }
 
         is ScreenViewState.Success -> {
-            val todos = state.todos.data
+            // Mutable state for todos to allow reordering
+            var todos by remember { mutableStateOf(state.todos.data) }
+
             HomeDetail(
                 todos = todos,
                 modifier = modifier,
                 onDeleteTodo = onDeleteTodo,
-                onTodoClicked = onTodoClicked
+                onTodoClicked = onTodoClicked,
+                onMove = { from, to ->
+                    val newList = todos.toMutableList()
+                    val movedItem = newList.removeAt(from)
+                    newList.add(to, movedItem)
+                    todos = newList
+                },
+                onDragFinished = {
+                    // Perform any action after drag finishes, e.g., save to DB
+                }
             )
         }
 
@@ -63,55 +85,36 @@ fun HomeScreen(
     }
 }
 
-
 @Composable
 private fun HomeDetail(
     todos: List<Todo>,
     modifier: Modifier,
     onDeleteTodo: (Long) -> Unit,
     onTodoClicked: (Long) -> Unit,
+    onMove: (Int, Int) -> Unit,
+    onDragFinished: () -> Unit,
 ) {
-    LazyVerticalStaggeredGrid(
-        columns = StaggeredGridCells.Fixed(2),
-        contentPadding = PaddingValues(4.dp),
-        modifier = modifier
-    ) {
-        itemsIndexed(todos) { index, todo ->
-            TodoCard(
-                index = index,
-                todo = todo,
-                onDeleteTodo = onDeleteTodo,
-                onTodoClicked = onTodoClicked
-            )
-        }
+    DragDropList(
+        items = todos,
+        onMove = onMove,
+        onDragFinished = onDragFinished
+    ) { todo ->
+        TodoCard(
+            todo = todo,
+            onDeleteTodo = onDeleteTodo,
+            onTodoClicked = onTodoClicked
+        )
     }
-
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TodoCard(
-    index: Int,
     todo: Todo,
     onDeleteTodo: (Long) -> Unit,
     onTodoClicked: (Long) -> Unit,
 ) {
-    val isEvenIndex = index % 2 == 0
-    val shape = when {
-        isEvenIndex -> {
-            RoundedCornerShape(
-                topStart = 50f,
-                bottomEnd = 50f
-            )
-        }
-
-        else -> {
-            RoundedCornerShape(
-                topEnd = 50f,
-                bottomStart = 50f
-            )
-        }
-    }
+    val shape = RoundedCornerShape(50f)
 
     Card(
         modifier = Modifier
@@ -149,11 +152,74 @@ fun TodoCard(
                     contentDescription = null,
                     modifier = Modifier.clickable { onDeleteTodo(todo.id) }
                 )
-
             }
         }
     }
 }
+
+@Composable
+fun <T> DragDropList(
+    items: List<T>,
+    onMove: (Int, Int) -> Unit,
+    onDragFinished: () -> Unit,
+    itemContent: @Composable (T) -> Unit
+) {
+    // State for tracking dragged item
+    var draggingItemIndex by remember { mutableStateOf<Int?>(null) }
+    var draggingOffsetY by remember { mutableStateOf(0f) }
+
+    LazyColumn {
+        itemsIndexed(items) { index, item ->
+            // Each item has a modifier for detecting dragging gestures
+            val modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
+                .pointerInput(Unit) {
+                    detectDragGestures(
+                        onDragEnd = {
+                            draggingItemIndex = null
+                            onDragFinished() // Final action after dragging ends
+                        },
+                        onDragCancel = {
+                            draggingItemIndex = null
+                        },
+                        onDrag = { change, dragAmount ->
+                            change.consume()
+                            draggingOffsetY += dragAmount.y
+
+                            // Move item when dragging over a threshold
+                            draggingItemIndex?.let { fromIndex ->
+                                val targetIndex = (fromIndex + draggingOffsetY / 100).toInt()
+                                    .coerceIn(0, items.size - 1)
+                                if (targetIndex != fromIndex) {
+                                    onMove(fromIndex, targetIndex)
+                                    draggingItemIndex = targetIndex
+                                    draggingOffsetY = 0f
+                                }
+                            }
+                        },
+                        onDragStart = {
+                            draggingItemIndex = index
+                        }
+                    )
+                }
+
+            Box(
+                modifier = if (index == draggingItemIndex) {
+                    modifier.graphicsLayer {
+                        translationY = draggingOffsetY // Apply Y offset while dragging
+                    }
+                } else {
+                    modifier
+                }
+            ) {
+                itemContent(item)
+            }
+        }
+    }
+}
+
+
 
 @Preview(showSystemUi = true)
 @Composable
