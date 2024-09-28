@@ -1,5 +1,11 @@
 package com.rey.todo.presentation.home
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateOffsetAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -9,6 +15,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -30,17 +37,24 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.times
+import androidx.compose.ui.zIndex
 import com.rey.todo.common.ScreenViewState
 import com.rey.todo.data.local.model.Todo
+import kotlinx.coroutines.launch
 import java.util.Date
 
 @Composable
@@ -164,37 +178,63 @@ fun <T> DragDropList(
     onDragFinished: () -> Unit,
     itemContent: @Composable (T) -> Unit
 ) {
-    // State for tracking dragged item
     var draggingItemIndex by remember { mutableStateOf<Int?>(null) }
     var draggingOffsetY by remember { mutableStateOf(0f) }
+    val draggingElevation = 16.dp
+    val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
 
     LazyColumn {
         itemsIndexed(items) { index, item ->
-            // Each item has a modifier for detecting dragging gestures
+            val isDragging = index == draggingItemIndex
+
+            val animatedOffsetY by animateDpAsState(
+                targetValue = if (isDragging) draggingOffsetY.toDp(density) else 0.dp,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
+            )
+
             val modifier = Modifier
                 .fillMaxWidth()
                 .padding(8.dp)
+                .offset(y = animatedOffsetY)
+                .graphicsLayer {
+                    translationY = if (isDragging) draggingOffsetY else 0f
+                    shadowElevation = if (isDragging) density.run { draggingElevation.toPx() } else 0f
+                    scaleX = if (isDragging) 1.05f else 1f
+                    scaleY = if (isDragging) 1.05f else 1f
+                }
+                .zIndex(if (isDragging) 1f else 0f)
                 .pointerInput(Unit) {
                     detectDragGestures(
                         onDragEnd = {
                             draggingItemIndex = null
-                            onDragFinished() // Final action after dragging ends
+                            draggingOffsetY = 0f // Reset offset on drag end
+                            onDragFinished()
                         },
                         onDragCancel = {
                             draggingItemIndex = null
+                            draggingOffsetY = 0f // Reset offset on drag cancel
                         },
                         onDrag = { change, dragAmount ->
                             change.consume()
                             draggingOffsetY += dragAmount.y
 
-                            // Move item when dragging over a threshold
+                            // Limit dragging to not go outside the list bounds
                             draggingItemIndex?.let { fromIndex ->
-                                val targetIndex = (fromIndex + draggingOffsetY / 100).toInt()
-                                    .coerceIn(0, items.size - 1)
+                                // Calculate the new position
+                                val newOffsetY = draggingOffsetY
+                                val itemHeight = 56.dp.toPx() // Replace this with your item height if it's different
+                                val minOffset = -fromIndex * itemHeight
+                                val maxOffset = (items.size - 1 - fromIndex) * itemHeight
+
+                                draggingOffsetY = newOffsetY.coerceIn(minOffset, maxOffset)
+
+                                // Handle item reordering
+                                val targetIndex = calculateTargetIndex(fromIndex, draggingOffsetY, items.size)
                                 if (targetIndex != fromIndex) {
                                     onMove(fromIndex, targetIndex)
                                     draggingItemIndex = targetIndex
-                                    draggingOffsetY = 0f
+                                    draggingOffsetY = 0f // Reset offset for new position
                                 }
                             }
                         },
@@ -204,20 +244,29 @@ fun <T> DragDropList(
                     )
                 }
 
-            Box(
-                modifier = if (index == draggingItemIndex) {
-                    modifier.graphicsLayer {
-                        translationY = draggingOffsetY // Apply Y offset while dragging
-                    }
-                } else {
-                    modifier
-                }
-            ) {
+            Box(modifier = modifier) {
                 itemContent(item)
             }
         }
     }
 }
+
+fun Float.toDp(density: Density): Dp {
+    return with(density) { this@toDp.toDp() }
+}
+
+private fun calculateTargetIndex(
+    fromIndex: Int,
+    draggingOffsetY: Float,
+    listSize: Int,
+): Int {
+    val moveThreshold = 50
+    return (fromIndex + (draggingOffsetY / moveThreshold).toInt()).coerceIn(0, listSize - 1)
+}
+
+
+
+
 
 
 
