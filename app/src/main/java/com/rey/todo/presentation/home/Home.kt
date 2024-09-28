@@ -6,27 +6,30 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateOffsetAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
+
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
-import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
-import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
+
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -45,6 +48,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Density
@@ -64,40 +68,116 @@ fun HomeScreen(
     onDeleteTodo: (Long) -> Unit,
     onTodoClicked: (Long) -> Unit,
 ) {
-    when (state.todos) {
-        is ScreenViewState.Loading -> {
-            CircularProgressIndicator()
-        }
+    var searchQuery by remember { mutableStateOf(TextFieldValue("")) }
 
-        is ScreenViewState.Success -> {
-            // Mutable state for todos to allow reordering
-            var todos by remember { mutableStateOf(state.todos.data) }
+    Column(modifier = modifier) {
+        // Add a search bar
+        SearchBar(
+            query = searchQuery,
+            onQueryChanged = { newQuery ->
+                searchQuery = newQuery
+            }
+        )
 
-            HomeDetail(
-                todos = todos,
-                modifier = modifier,
-                onDeleteTodo = onDeleteTodo,
-                onTodoClicked = onTodoClicked,
-                onMove = { from, to ->
-                    val newList = todos.toMutableList()
-                    val movedItem = newList.removeAt(from)
-                    newList.add(to, movedItem)
-                    todos = newList
-                },
-                onDragFinished = {
-                    // Perform any action after drag finishes, e.g., save to DB
+        when (state.todos) {
+            is ScreenViewState.Loading -> {
+                CircularProgressIndicator()
+            }
+
+            is ScreenViewState.Success -> {
+                // Maintain a mutable state for todos
+                var todos by remember(state.todos.data) { mutableStateOf(state.todos.data) }
+
+                // Filter the todos based on the search query
+                val filteredTodos = todos.filter {
+                    it.title.contains(searchQuery.text, ignoreCase = true)
                 }
-            )
-        }
 
-        is ScreenViewState.Error -> {
-            Text(
-                text = state.todos.message ?: "Unknown Error",
-                color = MaterialTheme.colorScheme.error
+                // Pass filtered todos to HomeDetail, but reorder the original todos
+                HomeDetail(
+                    todos = filteredTodos,
+                    modifier = modifier,
+                    onDeleteTodo = onDeleteTodo,
+                    onTodoClicked = onTodoClicked,
+                    onMove = { from, to ->
+                        // Reorder the original todos list
+                        todos = todos.toMutableList().apply {
+                            val movedItem = removeAt(from)
+                            add(to, movedItem)
+                        }
+                    },
+                    onDragFinished = {
+                        // Persist reordering if necessary
+                    }
+                )
+            }
+
+            is ScreenViewState.Error -> {
+                Text(
+                    text = state.todos.message ?: "Unknown Error",
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+    }
+}
+
+
+
+@Composable
+fun SearchBar(
+    query: TextFieldValue,
+    onQueryChanged: (TextFieldValue) -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+            .background(
+                color = MaterialTheme.colorScheme.onSurface,  // White background color
+                shape = CircleShape
+            )
+            .height(56.dp)
+            .padding(horizontal = 16.dp),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // Search Icon with white tint
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = "Search Icon",
+                tint = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f) // White icon color
+            )
+
+            Spacer(modifier = Modifier.size(8.dp))
+
+            // Text Field for Search Input with white text color
+            BasicTextField(
+                value = query,
+                onValueChange = onQueryChanged,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp),
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                    color = MaterialTheme.colorScheme.surface  // White text color
+                ),
+                decorationBox = { innerTextField ->
+                    if (query.text.isEmpty()) {
+                        Text(
+                            text = "Search todos...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.4f) // Placeholder text with white color
+                        )
+                    }
+                    innerTextField()
+                }
             )
         }
     }
 }
+
+
 
 @Composable
 private fun HomeDetail(
@@ -120,6 +200,7 @@ private fun HomeDetail(
         )
     }
 }
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
