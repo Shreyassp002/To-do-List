@@ -31,6 +31,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -54,6 +55,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
 import androidx.compose.ui.zIndex
 import com.rey.todo.common.ScreenViewState
@@ -215,42 +217,58 @@ fun TodoCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(4.dp),
-        shape = shape,
-        onClick = { onTodoClicked(todo.id) }
+        onClick = { onTodoClicked(todo.id) },
+        elevation = CardDefaults.cardElevation(4.dp)
     ) {
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(8.dp)
         ) {
-            Text(
-                text = todo.title,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                style = MaterialTheme.typography.titleMedium
-            )
-            Spacer(modifier = Modifier.size(4.dp))
-            Text(
-                text = todo.content,
-                maxLines = 4,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Spacer(modifier = Modifier.size(4.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
             ) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = null,
-                    modifier = Modifier.clickable { onDeleteTodo(todo.id) }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Title capped with ellipsis but not hiding content
+                    Text(
+                        text = todo.title,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 23.sp),
+                        modifier = Modifier.weight(1f) // Fill available space but not overlap delete icon
+                    )
+
+                    // Delete Icon at the top-right
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete Todo",
+                        modifier = Modifier
+                            .clickable { onDeleteTodo(todo.id) }
+                            .padding(start = 8.dp)
+                            .size(24.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.size(4.dp))
+
+                // Content text remains fully visible
+                Text(
+                    text = todo.content,
+                    maxLines = 4,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.bodyMedium
                 )
             }
         }
     }
 }
+
+
 
 @Composable
 fun <T> DragDropList(
@@ -280,7 +298,8 @@ fun <T> DragDropList(
                 .offset(y = animatedOffsetY)
                 .graphicsLayer {
                     translationY = if (isDragging) draggingOffsetY else 0f
-                    shadowElevation = if (isDragging) density.run { draggingElevation.toPx() } else 0f
+                    shadowElevation =
+                        if (isDragging) density.run { draggingElevation.toPx() } else 0f
                     scaleX = if (isDragging) 1.05f else 1f
                     scaleY = if (isDragging) 1.05f else 1f
                 }
@@ -304,14 +323,16 @@ fun <T> DragDropList(
                             draggingItemIndex?.let { fromIndex ->
                                 // Calculate the new position
                                 val newOffsetY = draggingOffsetY
-                                val itemHeight = 56.dp.toPx() // Replace this with your item height if it's different
+                                val itemHeight =
+                                    56.dp.toPx() // Replace this with your item height if it's different
                                 val minOffset = -fromIndex * itemHeight
                                 val maxOffset = (items.size - 1 - fromIndex) * itemHeight
 
                                 draggingOffsetY = newOffsetY.coerceIn(minOffset, maxOffset)
 
                                 // Handle item reordering
-                                val targetIndex = calculateTargetIndex(fromIndex, draggingOffsetY, items.size)
+                                val targetIndex =
+                                    calculateTargetIndex(fromIndex, draggingOffsetY, items.size)
                                 if (targetIndex != fromIndex) {
                                     onMove(fromIndex, targetIndex)
                                     draggingItemIndex = targetIndex
