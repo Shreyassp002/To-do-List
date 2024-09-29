@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
@@ -50,7 +51,7 @@ fun DetailScreen(
 
     val state = viewModel.state
     DetailScreen(
-        modifier = modifier,
+        modifier = modifier.padding(16.dp),
         isUpdatingTodo = state.isUpdatingTodo,
         title = state.title,
         content = state.content,
@@ -78,7 +79,9 @@ private fun DetailScreen(
     onNavigate: () -> Unit,
 ) {
     Column(
-        modifier = modifier.fillMaxWidth()
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(16.dp)
     ) {
         TopSection(
             title = title,
@@ -88,15 +91,16 @@ private fun DetailScreen(
             onBtnClick = onBtnClick,
             isUpdatingTodo = isUpdatingTodo
         )
-        Spacer(modifier = Modifier.size(2.dp))
+        Spacer(modifier = Modifier.size(16.dp))
         TodosTextField(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
             value = content,
             label = "Content",
             onValueChange = onContentChange,
             fontSize = 16,
         )
-
     }
 }
 
@@ -111,18 +115,27 @@ fun TopSection(
     isUpdatingTodo: Boolean,
 ) {
     Row(
-        modifier = modifier.fillMaxWidth().padding(3.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
+
         Icon(
             imageVector = Icons.Default.ArrowBackIosNew,
             contentDescription = null,
-            modifier = Modifier.clickable { onNavigate }
+            modifier = Modifier
+                .size(24.dp)
+                .clickable { onNavigate() },
+            tint = MaterialTheme.colorScheme.onSurface
         )
 
+
         TodosTextField(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 16.dp),
             value = title,
             label = "Title",
             labelAlign = TextAlign.Center,
@@ -130,11 +143,15 @@ fun TopSection(
             fontSize = 24
         )
 
-        AnimatedVisibility (isFormNotBlank) {
+
+        AnimatedVisibility(isFormNotBlank) {
             IconButton(onClick = onBtnClick) {
-                val icon = if (isUpdatingTodo) Icons.Default.Upload
-                else Icons.Default.Check
-                Icon(imageVector = icon, contentDescription = null)
+                val icon = if (isUpdatingTodo) Icons.Default.Upload else Icons.Default.Check
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
             }
         }
     }
@@ -151,24 +168,30 @@ private fun TodosTextField(
 ) {
     OutlinedTextField(
         value = value,
-
         onValueChange = onValueChange,
-        modifier = modifier,
+        modifier = modifier.fillMaxWidth(),
         colors = TextFieldDefaults.colors(
-            disabledContainerColor = Color.Transparent,
-            focusedContainerColor = Color.Transparent,
-            unfocusedContainerColor = Color.Transparent,
+            focusedContainerColor = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+            unfocusedTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+            disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+            focusedIndicatorColor = Color.Transparent,
             unfocusedIndicatorColor = Color.Transparent,
-            focusedIndicatorColor = Color.Transparent
         ),
         placeholder = {
             Text(
                 text = "Insert $label",
-                textAlign = labelAlign,
-                modifier = modifier,
-                fontSize = fontSize.sp
-
+                textAlign = labelAlign ?: TextAlign.Start,
+                fontSize = fontSize.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             )
-        }
+        },
+        textStyle = androidx.compose.ui.text.TextStyle(
+            fontSize = fontSize.sp
+        )
     )
 }
+
+
+
