@@ -198,18 +198,34 @@ private fun HomeDetail(
     onMove: (Int, Int) -> Unit,
     onDragFinished: () -> Unit,
 ) {
-    DragDropList(
-        items = todos,
-        onMove = onMove,
-        onDragFinished = onDragFinished
-    ) { todo ->
-        TodoCard(
-            todo = todo,
-            onDeleteTodo = onDeleteTodo,
-            onTodoClicked = onTodoClicked
-        )
+    if (todos.isEmpty()) {
+        // Display "No tasks to do" message when the list is empty
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "No tasks to do",
+                style = MaterialTheme.typography.titleMedium.copy(fontSize = 20.sp),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    } else {
+        // Display the DragDropList when there are todos
+        DragDropList(
+            items = todos,
+            onMove = onMove,
+            onDragFinished = onDragFinished
+        ) { todo ->
+            TodoCard(
+                todo = todo,
+                onDeleteTodo = onDeleteTodo,
+                onTodoClicked = onTodoClicked
+            )
+        }
     }
 }
+
 
 
 
