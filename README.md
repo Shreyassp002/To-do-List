@@ -20,9 +20,9 @@ A To-Do List App that used to track down the tasks.
 ## Key Features
 
 1. Add Task: Users can add new tasks to the list.
-2. Edit Task: Users should be able to edit an existing task.
+2. Edit Task: Users will be able to edit an existing task.
 3. Delete Task: Users can delete tasks from the list.
-4. Display all Tasks: The app should fetch tasks from the database and display them in a list with pagination.
+4. Display all Tasks: The app can fetch tasks from the database and display them in a list with pagination.
 5. Reorder Tasks: Users can drag and reorder tasks in the list, with the updated order reflected in the UI and saved.
 
 ## Build Instructions
